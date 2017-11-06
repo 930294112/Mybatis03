@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lanou.mapper.OrderDetailMapper">
+
+    <!--批量查询id集合-->
+    <sql id="select_ids">
+        <if test="list != null and list.size() > 0">
+            <foreach collection="list" item="id"
+                     open="And TOrderDetail.id in ("
+                     close=")"
+                     separator=",">
+                #{id}
+            </foreach>
+        </if>
+    </sql>
+
+    <!--orderDetail基础属性-->
+    <resultMap id="orderDetailMap" type="com.lanou.domain.OrderDetail">
+        <id column="id" property="id"/>
+        <result column="order_id" property="order_id"/>
+        <result column="item_id" property="item_id"/>
+        <result column="item_count" property="item_count"/>
+        <result column="item_total_price" property="item_total_price"/>
+    </resultMap>
+
+    <!--一对一的结果集,包含订单-->
+    <resultMap id="orderDetailAndOrder"
+               type="com.lanou.domain.OrderDetail"
+               extends="orderDetailMap">
+        <association property="order"
+                     javaType="com.lanou.domain.Order">
+            <id column="id" property="id"/>
+            <result column="user_id" property="user_id"/>
+            <result column="order_number" property="order_number"/>
+            <result column="order_price" property="order_price"/>
+        </association>
+
+
+    </resultMap>
+
+    <select id="findOrderDetailToOrder"
+            resultMap="orderDetailAndOrder"
+            parameterType="java.util.List" >
+        SELECT
+
+        TOrderDetail.id,
+        TOrderDetail.order_id,
+        TOrderDetail.item_id,
+        TOrderDetail.item_count,
+        TOrderDetail.item_total_price,
+
+        TOrder.id,
+        TOrder.user_id,
+        TOrder.order_number,
+        TOrder.order_price
+
+
+
+        FROM TOrderDetail,Torder
+
+        WHERE TOrderDetail.order_id=TOrder.id
+
+        <include refid="select_ids"/>
+
+    </select>
+
+
+</mapper>

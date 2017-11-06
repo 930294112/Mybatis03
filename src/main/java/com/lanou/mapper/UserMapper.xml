@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lanou.mapper.UserMapper">
+
+    <!--批量查询id集合-->
+    <sql id="select_ids">
+        <if test="list != null and list.size() > 0">
+            <foreach collection="list" item="id"
+                     open="And TUser.id in ("
+                     close=")"
+                     separator=",">
+                #{id}
+            </foreach>
+        </if>
+    </sql>
+    <!--定义一个sql片段,用于遍历id集合-->
+    <sql id="select_user_idList">
+        <if test="list != null and list.size > 0">
+            <foreach collection="list" item="id"
+                     open="And id in("
+                     close=")"
+                     separator=",">
+                #{id}
+            </foreach>
+        </if>
+    </sql>
+
+    <select id="findByIds"
+            parameterType="java.util.List"
+           resultType="com.lanou.domain.User">
+        SELECT * FROM TUser
+        <where>
+            1=1
+            /*引入上面定义好的sql片段*/
+           <include refid="select_user_idList"/>
+        </where>
+    </select>
+
+    <!--User表中的列-->
+    <sql id="userSql">
+        TUser.id uid,
+        TUser.loginName,
+        TUser.loginPassword,
+        TUser.gender,
+        TUser.age
+     </sql>
+
+    <!--order表中的列-->
+    <sql id="orderSql">
+        TOrder.id oid,
+        TOrder.user_id,
+        TOrder.order_number,
+        TOrder.order_price
+    </sql>
+
+    <!--OrderDetail表中的列-->
+    <sql id="orderDetailSql">
+        TOrderDetail.id did,
+        TOrderDetail.order_id,
+        TOrderDetail.item_id,
+        TOrderDetail.item_count,
+        TOrderDetail.item_total_price
+    </sql>
+
+    <!--Item表中的列-->
+    <sql id="itemSql">
+        TItem.id iid,
+        TItem.item_name,
+        TItem.item_price
+
+   </sql>
+
+    <!--User表中的基础属性-->
+    <resultMap id="userMap"
+               type="com.lanou.domain.User">
+        <id column="uid" property="id"/>
+        <result  column="loginName" property="loginName"/>
+        <result column="loginPassword" property="loginPassword"/>
+        <result column="gender" property="gender"/>
+        <result column="age" property="age"/>
+    </resultMap>
+
+    <!--User & Order & OrderDetail & Item表中的基础属性-->
+    <resultMap id="userAndOrderMap"
+               type="com.lanou.domain.User"
+                extends="userMap">
+        <!--用户对应的订单集合
+            List集合中对应的类型-->
+
+        <collection property="orders"
+                    ofType="com.lanou.domain.Order">
+            <id column="oid" property="id"/>
+
+            <!--一个订单包含多条订单详情-->
+           <collection property="orderDetails"
+                       ofType="com.lanou.domain.OrderDetail">
+               <id column="did" property="id"/>
+               <!--一条订单明细对应一个商品-->
+               <association property="item"
+                            javaType="com.lanou.domain.Item">
+                   <id column="iid" property="id"/>
+               </association>
+           </collection>
+        </collection>
+
+    </resultMap>
+
+    <!--查询用户购买的商品列表  多对多-->
+    <select id="findUserToItem"
+            parameterType="java.util.List"
+            resultMap="userAndOrderMap">
+        SELECT
+        <include refid="userSql"/>
+        ,
+        <include refid="orderSql"/>
+        ,
+        <include refid="orderDetailSql"/>
+        ,
+        <include refid="itemSql"/>
+
+        FROM TUser,TOrder,TOrderDetail,TItem
+
+        WHERE TUser.id = TOrder.user_id
+        AND TOrder.id = TOrderDetail.order_id
+        AND TOrderDetail.item_id = TItem.id
+
+        /*查询特定用户id*/
+        <include refid="select_ids"/>
+    </select>
+</mapper>
