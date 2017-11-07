@@ -85,7 +85,7 @@
     <!--User & Order & OrderDetail & Item表中的基础属性-->
     <resultMap id="userAndOrderMap"
                type="com.lanou.domain.User"
-                extends="userMap">
+               extends="userMap">
         <!--用户对应的订单集合
             List集合中对应的类型-->
 

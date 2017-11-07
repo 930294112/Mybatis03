@@ -1,0 +1,144 @@
+一.Mybatis的高级用法
+1.<where> <if> <foreach>
+
+    a.<where>:相当与where条件块,可以在CRUD语句中使用,通常和if标签联合使用
+
+    b.<if>:在sql语句中的条件判断,列入
+        <if test="list != null and list.size() > 0"/>
+        当满足list集合不为null且集合大小大于0时进入条件块,判断一个字符串是否有值时不仅要判断null,还要判断"空字符串"
+        可以使用where条件中,也可以使用在更新设置中
+
+    c.<foreach>:循环标签,常见属性
+        1)collection:要遍历的集合对象
+        2)item:遍历过程中生成的临时对象
+        3)open:在拼接这个循环字段开始连接的字符串
+        4)close:在拼接这个循环字段结束连接的字符串
+        5)separator:循环拼接字符串中间的分隔符
+        例句:
+        select * from 表名 where 1=1 and id in(1,2,3)
+        等价于:
+        select * from 表名 where 1=1 and
+            <if test="list != null and list.size() > 0">
+                <foreach collection="list" item="id"
+                         open="and id in("
+                         close=")"
+                         separator=",">
+                    #{id}
+                </foreach>
+            </if>
+
+2.sql片段
+    作用:提取重复的代码单独定义,减少代码的冗余
+    列如:
+        定义:
+            <sql id="userSql">
+                表名.列名1,
+                表名.列名2,
+                表名.列名3,
+                表名.列名4
+            </sql>
+        使用:
+           <include refid="userSql"/>
+        即:用<sql>标签定义,用<include>标签使用
+3.resultMap
+    作用:自定义结果集中的映射关系,通常用在返回结果设计到多个表,或者类名与POJO实体类中的属性名不同名的情况
+
+4.多表查询
+
+    1)一对一
+        列如:一条订单明细对应一个商品
+        即:在订单明细表中有一个商品的对象
+        需求:获得某条订单明细的商品详情
+
+        sql:(原始语句)
+            select
+                OrderDetail.id,
+                OrderDetail.user_id,
+                OrderDetail.item_id,
+
+                Item.id.
+                Item.item_name,
+                Item.item_price
+
+                from  OrderDetail,Item
+                where OrderDetail.item_id = Item.id
+
+        resultMap:
+            a. ofType:集合中引用的数据类型
+            b. avaType:具体的数据类型,如果是集合指向java.util.List
+            c. id:在result 结果中用于唯一标示某条结果,一般定义的是表主键,如果存在多个表,主键都叫id
+                则在select查询列时定义别名,以区分各个表的主键id,否则会出现所有表定义的id指向的都是主表查询出来的id值
+            d. result:定义普通列映射
+            e. association:用于定义一对一关系中的对象
+               其中property属性代表要对应的实体类对象在该上一层包装类中定义的属性名,javaType代表对应实体类的路径
+            <resultMap id="find"
+                       Type="com.lanou.domain.OrderDetail">
+                <id column="oid" property="id"/>
+                <result column="列名" property="属性名"/>
+                <result column="列名" property="属性名"/>
+
+                <association property="属性名"
+                             javaType="实体类路径">
+
+                     注意:这个地方定义的iid列名 不要和主表的id列名重复
+                   <id column="id" property="id"/>
+                   <result column="列名" property="属性名"/>
+                   <result column="列名" property="属性名"/>
+                </association>
+             </resultMap>
+
+    2)一对多
+        例如:一个用户对应对个订单,一个订单对应对个订单明细
+        即:用户对象中会持有订单集合
+        需求:查询用户名下的所有订单编号
+
+        <collection>:标签用于定义一对多的集合对象
+
+        <resultMap id="find"
+                    Type="com.lanou.domain.User">
+            <id column="uid" property="id">
+            <result column="列名" property="属性名"/>
+            <result column="列名" property="属性名"/>
+            <result column="列名" property="属性名"/>
+
+            <collection property="集合属性名"
+                        ofType="com.lanou.domain.Order">
+                <id column="oid" property="id">
+                <result column="列名" property="属性名"/>
+                <result column="列名" property="属性名"/>
+            </collection>
+        </resultMap>
+
+    3)多对多
+        例如:一个用户对应对个订单,一个订单对应对个订单明细,一个订单明细对应一个商品
+            由此推断用户与商品的关系是多对多,即一个用户可能买了对个商品,一个商品也可能卖给了多个用户
+        需求:查询某用户的购买商品记录
+        <resultMap id="find"
+                    Type="com.lanou.domain.User">
+             //主表中的主键id
+            <id column="uid" property="id">
+            <result column="列名" property="属性名"/>
+            <result column="列名" property="属性名"/>
+            <collection property="定单类集合属性名"
+                        ofType="订单类全路径">
+                  //订单表中的主键id
+                 <id column="oid" property="id">
+                 <result column="列名" property="属性名"/>
+                 <result column="列名" property="属性名"/>
+
+                 <collection property="定单明细类集合属性名"
+                             ofType="订单明细类全路径">
+                     //订单明细表中的主键id
+                    <id column="did" property="id">
+                    <result column="列名" property="属性名"/>
+                    <result column="列名" property="属性名"/>
+                    <association property="商品对象属性名"
+                                 javaType="商品对象实体类路径">
+                        //商品表中的主键id
+                        <id column="iid" property="id"/>
+                        <result column="列名" property="属性名"/>
+                        <result column="列名" property="属性名"/>
+                    </association>
+                 </collection>
+            </collection>
+        </resultMap>
